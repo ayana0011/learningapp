@@ -7,6 +7,13 @@ https://ayana0011.github.io/learningapp/ — main に push すると GitHub Acti
 - iPhone: Safari で開く → 共有 →「ホーム画面に追加」でアプリのように使える（オフラインでも開ける）
 - データは端末ごと。設定 →「同期ファイルを書き出す」→ AirDrop → もう片方で「読み込んで合わせる」（新しい方が残る・消したものは消えたまま）
 
+## Claude Code で自動作成（パソコンだけ）
+コピペの代わりに、このパソコンの Claude Code（`claude -p`、Sonnet）でカード・画像の解説・単語の意味を自動で作る。プランの使用量にカウントされる。
+```bash
+node ~/learningapp/helper/server.mjs
+```
+起動中はアプリに「🤖 Claude Code で自動作成」ボタンが出る。127.0.0.1 だけで待ち受け、公開版と localhost のアプリからの依頼だけに答える。初回に Chrome が「ローカルネットワークへのアクセス」を聞いてきたら許可する。`claude` のログインが切れていたら、ターミナルで `claude` →`/login`。
+
 ## 手元で起動（開発用）
 ```bash
 cd app

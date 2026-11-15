@@ -5,7 +5,8 @@ import { addWord, db, removeRows } from '../db/db'
 import { isLearned } from '../lib/srs'
 import { speakKo } from '../lib/settings'
 import type { WordCard } from '../lib/types'
-import { buildWordPrompt, extractWords, wordKey } from '../lib/words'
+import { buildWordPrompt, extractWords, wordKey, type WordReply } from '../lib/words'
+import { helperGenerate, useHelper } from '../lib/helper'
 
 export default function WordsPage() {
   const words = useLiveQuery(() => db.words.toArray(), [])
@@ -75,11 +76,27 @@ function MissingMeanings({ words }: { words: WordCard[] }) {
   const [msg, setMsg] = useState('')
   const prompt = useMemo(() => buildWordPrompt(words.slice(0, 80).map((w) => ({ k: w.k, sentence: w.examples[0]?.sentence }))), [words])
   const parsed = useMemo(() => (reply.trim() ? extractWords(reply) : null), [reply])
+  const helper = useHelper()
+  const [busy, setBusy] = useState(false)
 
-  async function apply() {
-    if (!parsed) return
+  async function auto() {
+    setBusy(true)
+    setMsg('Claude Code が意味を付けています…')
+    try {
+      const p = extractWords(await helperGenerate(prompt))
+      if (!p.items.length) { setMsg(`読み取れませんでした: ${p.errors[0] ?? ''}`); return }
+      await apply(p)
+    } catch (e) {
+      setMsg((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function apply(r: WordReply | null = parsed) {
+    if (!r) return
     let n = 0
-    for (const it of parsed.items) {
+    for (const it of r.items) {
       const target = words.find((w) => w.k === it.k || w.base === wordKey(it))
       if (!target) continue
       const newBase = wordKey(it)
@@ -93,7 +110,7 @@ function MissingMeanings({ words }: { words: WordCard[] }) {
       }
       n++
     }
-    setMsg(`${n} 語に意味を付けました${parsed.errors.length ? `（読めなかった項目 ${parsed.errors.length}）` : ''}`)
+    setMsg(`${n} 語に意味を付けました${r.errors.length ? `（読めなかった項目 ${r.errors.length}）` : ''}`)
     setReply('')
   }
 
@@ -101,7 +118,8 @@ function MissingMeanings({ words }: { words: WordCard[] }) {
     <section className="card space-y-3 text-sm">
       <div className="flex items-center gap-3">
         <h2 className="font-semibold">意味がまだない単語: {words.length} 語</h2>
-        <button className="btn-primary ml-auto" onClick={async () => { await navigator.clipboard.writeText(prompt); setCopied(true) }}>
+        {helper && <button className="btn-primary ml-auto" disabled={busy} onClick={auto}>{busy ? '作成中…' : '🤖 Claude Code で意味を付ける'}</button>}
+        <button className={helper ? 'btn-ghost' : 'btn-primary ml-auto'} onClick={async () => { await navigator.clipboard.writeText(prompt); setCopied(true) }}>
           {copied ? '✓ コピーしました' : '意味づけプロンプトをコピー'}
         </button>
       </div>
@@ -113,7 +131,7 @@ function MissingMeanings({ words }: { words: WordCard[] }) {
       {parsed?.errors.map((e, i) => <p key={i} className="text-amber-700 dark:text-amber-400">⚠ {e}</p>)}
       <div className="flex items-center gap-3">
         {msg && <p className="text-emerald-700 dark:text-emerald-400">{msg}</p>}
-        <button className="btn-primary ml-auto" disabled={!parsed?.items.length} onClick={apply}>意味を付ける（{parsed?.items.length ?? 0}）</button>
+        <button className="btn-primary ml-auto" disabled={!parsed?.items.length} onClick={() => apply()}>意味を付ける（{parsed?.items.length ?? 0}）</button>
       </div>
     </section>
   )

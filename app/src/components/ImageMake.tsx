@@ -5,9 +5,12 @@ import { buildImagePrompt, copyImage, extractImageReply } from '../lib/image'
 import { isLearned } from '../lib/srs'
 import type { Deck, Source } from '../lib/types'
 import NoteView from './NoteView'
+import HelperHint from './HelperHint'
+import { helperGenerate } from '../lib/helper'
+import type { ImageReply } from '../lib/image'
 
 /** 画像から解説とカードを作る（claude.ai に画像とプロンプトを貼る） */
-export default function ImageMake({ deck, source }: { deck: Deck; source: Source }) {
+export default function ImageMake({ deck, source, helper }: { deck: Deck; source: Source; helper: boolean | null }) {
   const known = useLiveQuery(async () => (await db.cards.toArray()).filter(isLearned).map((c) => c.k), [])
   const prompt = useMemo(() => buildImagePrompt({ title: source.title, known }), [source.title, known])
   const [url, setUrl] = useState('')
@@ -16,6 +19,7 @@ export default function ImageMake({ deck, source }: { deck: Deck; source: Source
   const [reply, setReply] = useState('')
   const [allWords, setAllWords] = useState(true)
   const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
   const parsed = useMemo(() => (reply.trim() ? extractImageReply(reply) : null), [reply])
 
   useEffect(() => {
@@ -32,9 +36,24 @@ export default function ImageMake({ deck, source }: { deck: Deck; source: Source
     }
   }
 
-  async function save() {
-    if (!parsed) return
-    const { items, note } = parsed
+  async function auto() {
+    setBusy(true)
+    setMsg('Claude Code が画像を読んでいます…（1〜2分かかることがあります）')
+    try {
+      const text = await helperGenerate(prompt, source.image)
+      const p = extractImageReply(text)
+      if (!p.items.length && !p.note) { setReply(text); setMsg(`読み取れませんでした: ${p.errors[0] ?? ''}`); return }
+      await save(p)
+    } catch (e) {
+      setMsg((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function save(p: ImageReply | null = parsed) {
+    if (!p) return
+    const { items, note } = p
     if (note) {
       const lines = note.text.split('\n').map((t) => t.trim()).filter(Boolean).map((text) => ({ text }))
       await db.sources.update(source.id!, { note, lines })
@@ -52,6 +71,14 @@ export default function ImageMake({ deck, source }: { deck: Deck; source: Source
   return (
     <>
       {source.note && <NoteView note={source.note} />}
+
+      {helper && (
+        <div className="card flex flex-wrap items-center gap-3 text-sm">
+          <p className="flex-1">🤖 Claude Code につながっています。ボタンを押すと、画像の解説とカードを自動で作ります。</p>
+          <button className="btn-primary" disabled={busy} onClick={auto}>{busy ? '作成中…' : '🤖 Claude Code で自動作成'}</button>
+        </div>
+      )}
+      <HelperHint ok={helper} />
 
       <ol className="card list-decimal space-y-1 pl-8 text-sm">
         <li><a className="text-rose-600 underline" href="https://claude.ai/new" target="_blank" rel="noreferrer">claude.ai</a> を開く（モデルは Sonnet で十分です）</li>
@@ -95,7 +122,7 @@ export default function ImageMake({ deck, source }: { deck: Deck; source: Source
             <input type="checkbox" checked={allWords} onChange={(e) => setAllWords(e.target.checked)} />
             出てきた単語をすべて単語デッキにも入れる
           </label>
-          <button className="btn-primary ml-auto" disabled={!parsed || (!parsed.items.length && !parsed.note)} onClick={save}>解説とカードを保存</button>
+          <button className="btn-primary ml-auto" disabled={!parsed || (!parsed.items.length && !parsed.note)} onClick={() => save()}>解説とカードを保存</button>
         </div>
         {msg && <p className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</p>}
       </section>
