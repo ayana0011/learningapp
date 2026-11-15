@@ -1,28 +1,47 @@
 import { useState } from 'react'
-import { exportAll, importAll } from '../db/db'
-import { useSettings } from '../lib/settings'
+import { exportSync, importSync } from '../db/db'
+import { deviceId, useSettings } from '../lib/settings'
 
 export default function SettingsPage() {
   const [s, set] = useSettings()
   const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  async function download() {
-    const data = await exportAll()
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `phrase-flashcards-${data.exportedAt.slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
+  async function share() {
+    setBusy(true)
+    setMsg('')
+    try {
+      const data = await exportSync()
+      const name = `phrase-sync-${data.exportedAt.slice(0, 16).replace(/[-:T]/g, '')}-${data.device}.json`
+      const file = new File([JSON.stringify(data)], name, { type: 'application/json' })
+      // スマホは共有シート（AirDrop など）、パソコンはダウンロード
+      if (navigator.canShare?.({ files: [file] }) && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+        await navigator.share({ files: [file], title: 'フレーズ暗記の同期ファイル' })
+      } else {
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(file)
+        a.download = name
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+      }
+      setMsg(`書き出しました（カード ${data.cards.length} 枚・単語 ${data.words.length} 語）`)
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setMsg(`書き出せませんでした: ${(e as Error).message}`)
+    } finally {
+      setBusy(false)
+    }
   }
 
-  async function restore(f: File) {
-    if (!confirm('今のデータをすべて置き換えます。よろしいですか？')) return
+  async function merge(f: File) {
+    setBusy(true)
+    setMsg('')
     try {
-      await importAll(JSON.parse(await f.text()))
-      setMsg('読み込みました')
+      const r = await importSync(JSON.parse(await f.text()))
+      setMsg(`合わせました: 追加 ${r.added} ・ 更新 ${r.updated} ・ 削除 ${r.removed}`)
     } catch (e) {
       setMsg(`読み込めませんでした: ${(e as Error).message}`)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -63,16 +82,24 @@ export default function SettingsPage() {
       </section>
 
       <section className="card space-y-3 text-sm">
-        <h2 className="font-semibold">バックアップ</h2>
-        <p className="text-stone-500">データはこのブラウザの中だけに保存されています。ときどき書き出しておくと安心です。</p>
+        <h2 className="font-semibold">パソコン ⇄ スマホの同期・バックアップ</h2>
+        <p className="text-stone-500">
+          データはこのブラウザの中だけにあります。片方で「書き出す」→ もう片方で「読み込んで合わせる」と、両方の内容が合わさります（新しい方が残り、消したものは消えたまま）。書き出したファイルはバックアップにもなります。
+        </p>
+        <ol className="list-decimal space-y-1 pl-5 text-stone-500">
+          <li>パソコンでカードを作ったら「書き出す」→ AirDrop でスマホへ</li>
+          <li>スマホで「読み込んで合わせる」→ 届いたファイルを選ぶ（「ファイル」アプリのダウンロード）</li>
+          <li>スマホで暗記した記録をパソコンにも反映したいときは、逆向きに同じことをする</li>
+        </ol>
         <div className="flex flex-wrap gap-2">
-          <button className="btn-ghost" onClick={download}>JSON で書き出す</button>
-          <label className="btn-ghost">
-            JSON から読み込む
-            <input type="file" accept=".json" className="hidden" onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
+          <button className="btn-primary" disabled={busy} onClick={share}>同期ファイルを書き出す</button>
+          <label className={`btn-ghost ${busy ? 'pointer-events-none opacity-40' : ''}`}>
+            読み込んで合わせる
+            <input type="file" accept=".json,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) merge(f) }} />
           </label>
         </div>
         {msg && <p>{msg}</p>}
+        <p className="text-xs text-stone-400">この端末: {deviceId()}</p>
       </section>
     </div>
   )

@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { addWord, db } from '../db/db'
+import { addWord, db, removeRows } from '../db/db'
 import { isLearned } from '../lib/srs'
 import { speakKo } from '../lib/settings'
 import type { WordCard } from '../lib/types'
@@ -87,7 +87,7 @@ function MissingMeanings({ words }: { words: WordCard[] }) {
       if (other && other.id !== target.id) {
         // 辞書形が同じ単語がすでにあれば、そちらにまとめる
         for (const ex of target.examples) await addWord({ ...it, k: other.k, b: newBase }, ex)
-        await db.words.delete(target.id!)
+        await removeRows('words', [target.id!])
       } else {
         await db.words.update(target.id!, { j: it.j, p: it.p || target.p, base: newBase })
       }
@@ -129,7 +129,7 @@ function EditWord({ word, onDone }: { word: WordCard; onDone: () => void }) {
       <input className="input" value={j} onChange={(e) => setJ(e.target.value)} placeholder="意味" />
       <input className="input" value={p} onChange={(e) => setP(e.target.value)} placeholder="カタカナ" />
       <div className="flex gap-2">
-        <button className="btn-ghost text-rose-600" onClick={async () => { await db.words.delete(word.id!); onDone() }}>削除</button>
+        <button className="btn-ghost text-rose-600" onClick={async () => { await removeRows('words', [word.id!]); onDone() }}>削除</button>
         <button className="btn-ghost ml-auto" onClick={onDone}>キャンセル</button>
         <button className="btn-primary" onClick={async () => { await db.words.update(word.id!, { k, j, p }); onDone() }}>保存</button>
       </div>

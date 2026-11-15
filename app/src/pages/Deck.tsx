@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { db } from '../db/db'
+import { db, removeDeck as removeDeckData, removeRows } from '../db/db'
 import WordChips from '../components/WordChips'
 import NoteView from '../components/NoteView'
 import { useEffect } from 'react'
@@ -33,8 +33,7 @@ export default function DeckPage() {
 
   async function removeDeck() {
     if (!confirm(`「${deck!.title}」とカード ${cards!.length} 枚を削除します。元に戻せません。`)) return
-    await db.cards.where('deckId').equals(id).delete()
-    await db.decks.delete(id)
+    await removeDeckData(id)
     nav('/')
   }
 
@@ -98,7 +97,7 @@ function EditRow({ card, onDone }: { card: PhraseCard; onDone: () => void }) {
       <input className="input" value={p} onChange={(e) => setP(e.target.value)} placeholder="カタカナ" />
       <input className="input" value={j} onChange={(e) => setJ(e.target.value)} placeholder="日本語訳" />
       <div className="flex gap-2">
-        <button className="btn-ghost text-rose-600" onClick={async () => { await db.cards.delete(card.id!); onDone() }}>削除</button>
+        <button className="btn-ghost text-rose-600" onClick={async () => { await removeRows('cards', [card.id!]); onDone() }}>削除</button>
         <button className="btn-ghost ml-auto" onClick={onDone}>キャンセル</button>
         <button className="btn-primary" onClick={async () => { await db.cards.update(card.id!, { k, p, j }); onDone() }}>保存</button>
       </div>

@@ -11,7 +11,14 @@ export interface Line {
   star?: boolean
 }
 
-export interface Source {
+export interface SyncMeta {
+  /** 端末をまたいで同じものを見分ける ID */
+  uid?: string
+  /** 最後に変更した時刻 (ms)。同期で新しい方を残す */
+  updatedAt?: number
+}
+
+export interface Source extends SyncMeta {
   id?: number
   title: string
   url?: string
@@ -50,7 +57,7 @@ export interface GeneratedItem {
   w: Word[]
 }
 
-export interface Deck {
+export interface Deck extends SyncMeta {
   id?: number
   sourceId: number
   title: string
@@ -70,7 +77,7 @@ export interface Review {
 
 export type Grade = 'again' | 'ok' | 'good'
 
-export interface PhraseCard extends Review {
+export interface PhraseCard extends Review, SyncMeta {
   id?: number
   deckId: number
   order: number
@@ -84,6 +91,8 @@ export interface PhraseCard extends Review {
 export interface StudyLog {
   id?: number
   day: string // YYYY-MM-DD
+  /** どの端末の記録か（端末ごとに分けて持ち、合計して表示する） */
+  device?: string
   seconds: number
   reviewed: number
   learned: number
@@ -97,7 +106,7 @@ export interface WordExample {
 }
 
 /** 単語デッキのカード（辞書形 base で1枚にまとめる） */
-export interface WordCard extends Review {
+export interface WordCard extends Review, SyncMeta {
   id?: number
   base: string
   k: string
@@ -105,4 +114,12 @@ export interface WordCard extends Review {
   p: string
   examples: WordExample[]
   createdAt: number
+}
+
+/** 削除の記録（同期で消したものが復活しないように） */
+export interface Tombstone {
+  id?: number
+  uid: string
+  table: 'sources' | 'decks' | 'cards' | 'words'
+  at: number
 }

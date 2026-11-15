@@ -5,6 +5,7 @@ import { useSettings } from '../lib/settings'
 import { dayKey, isLearned } from '../lib/srs'
 import { countLearnedWords, goalProgress } from '../lib/words'
 import type { StudyLog } from '../lib/types'
+import { sumByDay } from '../lib/sync'
 
 function streak(days: Set<string>): number {
   let n = 0
@@ -23,9 +24,11 @@ export default function Home() {
     return { decks, cards, sources, logs, words }
   }, [])
   if (!data) return <p>読み込み中…</p>
-  const { decks, cards, sources, logs, words } = data
+  const { decks, cards, sources, words } = data
+  const byDay = sumByDay(data.logs)
+  const logs = [...byDay.values()]
   const now = Date.now()
-  const today = logs.find((l) => l.day === dayKey())
+  const today = byDay.get(dayKey())
   const srcOf = new Map(sources.map((s) => [s.id, s]))
   const learnedWords = countLearnedWords(cards.filter(isLearned).map((c) => c.w), words.filter(isLearned))
   const wordsDue = words.filter((w) => w.j && w.due <= now).length
@@ -132,7 +135,7 @@ function Goal({ learned, goal, days, start }: { learned: number; goal: number; d
 }
 
 function Week({ logs }: { logs: StudyLog[] }) {
-  const byDay = new Map(logs.map((l) => [l.day, l]))
+  const byDay = new Map(logs.map((l) => [l.day, l])) // 端末の合計済み
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (6 - i))

@@ -54,3 +54,20 @@ export function youtubeAt(url: string | undefined, t: number | undefined): strin
     return undefined
   }
 }
+
+const DEVICE_KEY = 'phrase-flashcards-device'
+let cachedDevice = ''
+/** この端末の ID（学習記録を端末ごとに分けるため） */
+export function deviceId(): string {
+  if (cachedDevice) return cachedDevice
+  try {
+    cachedDevice = localStorage.getItem(DEVICE_KEY) || ''
+    if (!cachedDevice) {
+      cachedDevice = (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 'phone-' : 'pc-') + Math.random().toString(36).slice(2, 8)
+      localStorage.setItem(DEVICE_KEY, cachedDevice)
+    }
+  } catch {
+    cachedDevice ||= 'dev-' + Math.random().toString(36).slice(2, 8)
+  }
+  return cachedDevice
+}
