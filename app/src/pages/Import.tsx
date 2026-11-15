@@ -7,6 +7,7 @@ import type { Line, SourceKind } from '../lib/types'
 import { useSettings } from '../lib/settings'
 import ImageImport from '../components/ImageImport'
 import ClaudePaste from '../components/ClaudePaste'
+import { helperYoutube, isYoutubeUrl, useHelper } from '../lib/helper'
 
 const KINDS: { v: SourceKind; label: string }[] = [
   { v: 'youtube', label: 'YouTube' },
@@ -28,6 +29,9 @@ export default function ImportPage() {
   const replayId = params.get('from') === 'tblfan' ? params.get('replay') : null
   const [extMsg, setExtMsg] = useState('')
   const [extWords, setExtWords] = useState<NonNullable<ReplayRecord['words']>>([])
+  const helper = useHelper()
+  const [ytBusy, setYtBusy] = useState(false)
+  const [ytMsg, setYtMsg] = useState('')
   const [mode, setMode] = useState<'text' | 'image' | 'claude'>((['image', 'claude'] as const).find((m) => m === params.get('mode')) ?? 'text')
 
   // tblfan 拡張から「暗記アプリに送る」で開かれた場合
@@ -56,6 +60,26 @@ export default function ImportPage() {
   const chunks = useMemo(() => suggestRanges(lines), [lines])
   const sel: [number, number] = range ?? (chunks.length > 1 ? chunks[0] : [0, lines.length])
   const selected = lines.slice(sel[0], sel[1])
+
+  async function fetchYoutube() {
+    setYtBusy(true)
+    setYtMsg('字幕を取ってきています…')
+    try {
+      const r = await helperYoutube(url)
+      setKind('youtube')
+      setUrl(r.url)
+      if (r.title) setTitle(r.title)
+      if (r.author && !artist) setArtist(r.author)
+      setFileLines(r.lines.map((l) => ({ t: l.t, end: l.end, text: l.text })))
+      setRaw('')
+      setRange(null)
+      setYtMsg(`${r.lines.length} 行の字幕を取り込みました${r.generated ? '（自動生成の字幕なので聞き間違いがあるかもしれません）' : ''}`)
+    } catch (e) {
+      setYtMsg((e as Error).message)
+    } finally {
+      setYtBusy(false)
+    }
+  }
 
   async function onFile(f: File) {
     const text = await f.text()
@@ -101,10 +125,14 @@ export default function ImportPage() {
           ))}
         </div>
         <input className="input" placeholder="タイトル（例: 카페 vlog）" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <input className="input" placeholder="元のURL（任意）" value={url} onChange={(e) => setUrl(e.target.value)} />
-          <input className="input" placeholder="アーティスト・チャンネル名（任意）" value={artist} onChange={(e) => setArtist(e.target.value)} />
+        <div className="flex gap-2">
+          <input className="input" placeholder={helper ? 'YouTube の URL（貼ると字幕を自動で取り込めます）' : '元のURL（任意）'} value={url} onChange={(e) => { setUrl(e.target.value); setYtMsg('') }} />
+          {helper && isYoutubeUrl(url) && (
+            <button className="btn-primary shrink-0" disabled={ytBusy} onClick={fetchYoutube}>{ytBusy ? '取得中…' : '🤖 字幕を自動で取り込む'}</button>
+          )}
         </div>
+        {ytMsg && <p className="text-sm text-stone-600 dark:text-stone-300">{ytMsg}</p>}
+        <input className="input" placeholder="アーティスト・チャンネル名（任意）" value={artist} onChange={(e) => setArtist(e.target.value)} />
       </section>
 
       <section className="card space-y-3">
@@ -121,7 +149,7 @@ export default function ImportPage() {
             .srt / .vtt / .txt を選ぶ
             <input type="file" accept=".srt,.vtt,.txt" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
           </label>
-          {fileLines && <span className="text-stone-500">{replayId ? '拡張' : 'ファイル'}から {fileLines.length} 行</span>}
+          {fileLines && <span className="text-stone-500">{replayId ? '拡張' : ytMsg ? 'YouTube' : 'ファイル'}から {fileLines.length} 行</span>}
           <label className="ml-auto flex items-center gap-2">
             <input type="checkbox" checked={settings.dropFillers} onChange={(e) => setSettings({ dropFillers: e.target.checked })} />
             相づちだけの行（아. 네. など）を除く

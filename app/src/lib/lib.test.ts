@@ -65,6 +65,10 @@ describe('cleanLines', () => {
     )
     expect(out.map((l) => l.text)).toEqual(['네.', '오늘 날씨 좋다'])
   })
+  it('括弧つきのナレーション字幕は括弧を外して残す', () => {
+    const out = cleanLines([{ text: '[크리스마스 다음 날인데도 부지런한 분들이 많아요]' }, { text: '(웃음)' }, { text: '[박수]' }, { text: '♪♪' }], { dropFillers: true })
+    expect(out.map((l) => l.text)).toEqual(['크리스마스 다음 날인데도 부지런한 분들이 많아요'])
+  })
   it('isFiller', () => {
     expect(isFiller('아.')).toBe(true)
     expect(isFiller('어. 네.')).toBe(true)

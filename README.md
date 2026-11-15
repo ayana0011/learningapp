@@ -12,7 +12,7 @@ https://ayana0011.github.io/learningapp/ — main に push すると GitHub Acti
 ```bash
 node ~/learningapp/helper/server.mjs
 ```
-起動中はアプリに「🤖 Claude Code で自動作成」ボタンが出る。127.0.0.1 だけで待ち受け、公開版と localhost のアプリからの依頼だけに答える。初回に Chrome が「ローカルネットワークへのアクセス」を聞いてきたら許可する。`claude` のログインが切れていたら、ターミナルで `claude` →`/login`。
+起動中はアプリに「🤖 Claude Code で自動作成」ボタンが出る。取り込み画面に YouTube の URL を貼ると「🤖 字幕を自動で取り込む」も出る（韓国語字幕がある動画だけ。初回のみ `sh ~/learningapp/helper/setup.sh` で準備）。127.0.0.1 だけで待ち受け、公開版と localhost のアプリからの依頼だけに答える。初回に Chrome が「ローカルネットワークへのアクセス」を聞いてきたら許可する。`claude` のログインが切れていたら、ターミナルで `claude` →`/login`。
 
 ## 手元で起動（開発用）
 ```bash

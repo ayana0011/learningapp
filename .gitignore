@@ -6,3 +6,7 @@ dist/
 
 # tblfan 用の拡張は公開しない（このパソコンの中だけ）
 extension/
+
+# お手伝いプログラムの Python 環境
+helper/.venv/
+__pycache__/

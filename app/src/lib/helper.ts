@@ -44,3 +44,31 @@ export async function helperGenerate(prompt: string, image?: Blob): Promise<stri
 }
 
 export const HELPER_COMMAND = 'node ~/learningapp/helper/server.mjs'
+
+export interface YoutubeSubs {
+  id: string
+  url: string
+  title?: string
+  author?: string
+  lang: string
+  generated: boolean
+  lines: { t: number; end: number; text: string }[]
+}
+
+/** YouTube の韓国語字幕を取ってくる（お手伝いプログラム経由） */
+export async function helperYoutube(url: string): Promise<YoutubeSubs> {
+  let r: Response
+  try {
+    r = await fetch(`${BASE}/youtube`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) })
+  } catch {
+    throw new Error('お手伝いプログラムにつながりません。ターミナルで起動しているか確認してください')
+  }
+  const data = await r.json().catch(() => ({}))
+  if (r.status === 404) throw new Error('お手伝いプログラムが古いので、ターミナルで止めて（Ctrl+C）もう一度起動してください')
+  if (!r.ok) throw new Error(data.error || `エラー (${r.status})`)
+  return data as YoutubeSubs
+}
+
+export function isYoutubeUrl(url: string): boolean {
+  return /^(https?:\/\/)?(www\.|m\.)?(youtube\.com\/(watch|shorts|live)|youtu\.be\/)/.test(url.trim())
+}

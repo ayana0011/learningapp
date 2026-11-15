@@ -11,7 +11,9 @@ export function parseClock(s: string): number | undefined {
   return (Number(h ?? 0) * 3600) + Number(mi) * 60 + Number(se) + (frac ? Number('0.' + frac) : 0)
 }
 
-const NON_SPEECH = /^[\[(（【♪].*[\])）】♪]$|^♪+$/
+// [음악] (박수) のような短い効果音・BGM の表記だけの行。長いもの（ナレーション字幕）は括弧を外して残す
+const NON_SPEECH = /^[\[(（【♪]\s*[^\])）】]{0,6}\s*[\])）】♪]?$|^♪+$/
+const WRAPPED = /^[\[(（【]\s*(.+?)\s*[\])）】]$/
 
 /** 字幕ファイル（SRT / VTT）を解析 */
 export function parseSubtitleFile(text: string): Line[] {
@@ -85,10 +87,11 @@ export function cleanLines(lines: Line[], opts: CleanOptions): Line[] {
     if (!text) continue
     if (NON_SPEECH.test(text)) continue
     if (!HANGUL.test(text)) continue
-    if (opts.dropFillers && !l.star && isFiller(text)) continue
+    const unwrapped = text.match(WRAPPED)?.[1] ?? text
+    if (opts.dropFillers && !l.star && isFiller(unwrapped)) continue
     const prev = out[out.length - 1]
-    if (prev && prev.text === text) { if (l.star) prev.star = true; continue }
-    out.push({ ...l, text })
+    if (prev && prev.text === unwrapped) { if (l.star) prev.star = true; continue }
+    out.push({ ...l, text: unwrapped })
   }
   return out
 }
