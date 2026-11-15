@@ -15,6 +15,12 @@ describe('image', () => {
     expect(r.note).toEqual({ text: '오늘 너무 행복했어 ㅠㅠ', ja: '今日すごく幸せだった（泣）', notes: ['ㅠㅠ は泣き顔の顔文字', '했어 はパンマル'] })
     expect(r.items[0].w[0].b).toBe('행복하다')
   })
+  it('解説のあとに JSON が付いた答え（Claude アプリの形）', () => {
+    const r = extractImageReply('## 解説\n- 例: `{x}` のような書き方\n```\nコード例\n```\n\n```json\n{"text":"고마워","ja":"ありがとう","notes":[],"items":[{"k":"고마워","j":"ありがとう","p":"コマウォ","w":[]}]}\n```')
+    expect(r.errors).toEqual([])
+    expect(r.items[0].k).toBe('고마워')
+    expect(r.note?.text).toBe('고마워')
+  })
   it('解説がなければ note は null', () => {
     expect(extractImageReply('{"items":[{"k":"가","j":"か"}]}').note).toBeNull()
   })

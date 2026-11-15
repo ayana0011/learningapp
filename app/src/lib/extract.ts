@@ -7,8 +7,9 @@ export interface ExtractResult {
 
 /** 文字列から最初の JSON オブジェクト／配列を取り出す（前後の文章や ```json 囲みを無視） */
 export function findJson(text: string): string | null {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const src = fenced ? fenced[1] : text
+  // コードブロックがいくつかあるときは、JSON らしい最後のものを使う（答えの最後に JSON が付く形に合わせる）
+  const blocks = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)].map((m) => m[1]).filter((b) => /^\s*[{[]/.test(b))
+  const src = blocks.length ? blocks[blocks.length - 1] : text
   const start = src.search(/[{[]/)
   if (start < 0) return null
   const open = src[start]

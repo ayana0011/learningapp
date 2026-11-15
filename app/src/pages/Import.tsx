@@ -6,6 +6,7 @@ import { cleanLines, formatClock, parsePastedText, parseSubtitleFile, suggestRan
 import type { Line, SourceKind } from '../lib/types'
 import { useSettings } from '../lib/settings'
 import ImageImport from '../components/ImageImport'
+import ClaudePaste from '../components/ClaudePaste'
 
 const KINDS: { v: SourceKind; label: string }[] = [
   { v: 'youtube', label: 'YouTube' },
@@ -27,7 +28,7 @@ export default function ImportPage() {
   const replayId = params.get('from') === 'tblfan' ? params.get('replay') : null
   const [extMsg, setExtMsg] = useState('')
   const [extWords, setExtWords] = useState<NonNullable<ReplayRecord['words']>>([])
-  const [mode, setMode] = useState<'text' | 'image'>(params.get('mode') === 'image' ? 'image' : 'text')
+  const [mode, setMode] = useState<'text' | 'image' | 'claude'>((['image', 'claude'] as const).find((m) => m === params.get('mode')) ?? 'text')
 
   // tblfan 拡張から「暗記アプリに送る」で開かれた場合
   useEffect(() => {
@@ -78,12 +79,14 @@ export default function ImportPage() {
   const modeTabs = (
     <div className="flex items-center gap-2">
       <h1 className="mr-auto text-xl font-bold">取り込む</h1>
-      <button className={mode === 'text' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('text')}>📝 字幕・テキスト</button>
+      <button className={mode === 'text' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('text')}>📝 字幕</button>
       <button className={mode === 'image' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('image')}>🖼️ 画像</button>
+      <button className={mode === 'claude' ? 'btn-primary' : 'btn-ghost'} onClick={() => setMode('claude')}>💬 Claude</button>
     </div>
   )
 
   if (mode === 'image') return <div className="space-y-6">{modeTabs}<ImageImport /></div>
+  if (mode === 'claude') return <div className="space-y-6">{modeTabs}<ClaudePaste /></div>
 
   return (
     <div className="space-y-6">

@@ -58,7 +58,8 @@ export default function Home() {
 
       <div className="flex items-center">
         <h1 className="text-xl font-bold">デッキ</h1>
-        <Link to="/import?mode=image" className="btn-ghost ml-auto">🖼️ 画像から</Link>
+        <Link to="/import?mode=claude" className="btn-ghost ml-auto">💬</Link>
+        <Link to="/import?mode=image" className="btn-ghost ml-2">🖼️ 画像</Link>
         <Link to="/import" className="btn-primary ml-2">＋ 字幕を取り込む</Link>
       </div>
 
