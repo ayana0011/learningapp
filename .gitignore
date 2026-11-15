@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+.claude/settings.local.json
+
+# tblfan 用の拡張は公開しない（このパソコンの中だけ）
+extension/
